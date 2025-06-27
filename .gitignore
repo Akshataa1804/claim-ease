@@ -1,0 +1,90 @@
+claim-ease/venv/
+.pytest_cache/
+.streamlit/secrets.toml
+.streamlit/data/
+.streamlit/cache/
+venv/
+
+# Python and development files
+venv/              # Virtual environment
+__pycache__/       # Python cache files
+*.pyc              # Compiled Python files
+*.pyo
+*.pyd
+.python-version
+
+# Environment variables
+.env               # Local environment variables
+.secrets/          # Secrets folder
+
+# API keys and sensitive data
+*.key
+*.pem
+*.crt
+*.cer
+credentials.json
+secrets.toml
+
+# Ollama models and cache
+.ollama/           # Ollama configuration and models
+.ollamarc
+
+# Document processing artifacts
+*.pdf              # Uploaded PDFs
+*.jpg              # Uploaded images
+*.jpeg
+*.png
+temp/              # Temporary processing files
+
+# Streamlit
+.streamlit/        # Streamlit config (except secrets.toml)
+!/.streamlit/secrets.toml.example  # Keep example secret file
+
+# System files
+.DS_Store          # macOS folder attributes
+Thumbs.db          # Windows thumbnail cache
+desktop.ini        # Windows folder customization
+
+# IDE files
+.idea/             # PyCharm
+.vscode/           # VS Code
+*.code-workspace
+*.sublime-project
+*.sublime-workspace
+
+# Build and distribution
+dist/
+build/
+*.egg-info/
+*.spec
+
+# Log files
+*.log
+logs/
+
+# Test artifacts
+coverage.xml
+.coverage
+htmlcov/
+
+# Large files
+*.zip
+*.tar
+*.gz
+
+# Documentation
+docs/_build/
+
+# Sample inputs/outputs (optional - remove if you want to keep them)
+sample_inputs/*.txt
+screenshots/*.png
+ppt/*.pptx
+
+# Jupyter notebooks
+*.ipynb
+*.ipynb_checkpoints/
+
+# PyTorch/Venv
+*.pt
+*.bin
+*.onnx
