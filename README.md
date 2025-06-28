@@ -1,14 +1,19 @@
 # ClaimEase 🛡️
-AI-powered insurance claim assistant
+
+100% Local AI Insurance Assistant - No APIs, No Costs
 
 ## Features
-- Natural language claim processing
-- Missing information detection
-- Document checklist generation
-- Completeness scoring
+- 🏠 100% local processing - no internet required
+- 📝 Natural language claim analysis
+- 📄 Document text extraction (OCR)
+- ⚠️ Red flag detection
+- ✅ Document checklist
+- 📊 Completeness scoring
 
-## Setup
-```bash
-pip install -r requirements.txt
-echo 'OPENAI_API_KEY="sk-your-key"' > .streamlit/secrets.toml
-streamlit run streamlit_ui.py
+## Installation
+1. **Install Ollama**  
+   [Download for Windows](https://ollama.com/download)  
+   Then install models:  
+   ```powershell
+   ollama pull llama3
+   ollama pull mistral

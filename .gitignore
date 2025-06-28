@@ -88,3 +88,90 @@ ppt/*.pptx
 *.pt
 *.bin
 *.onnx
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.python-version
+
+# Environment
+.env
+.secrets/
+
+# Keys and sensitive data
+*.key
+*.pem
+*.crt
+*.cer
+credentials.json
+secrets.toml
+
+# Ollama
+.ollama/
+.ollamarc
+
+# Documents
+*.pdf
+*.jpg
+*.jpeg
+*.png
+temp/
+
+# Streamlit
+.streamlit/
+!/.streamlit/secrets.toml.example
+
+# System
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
+
+# Build
+dist/
+build/
+*.egg-info/
+*.spec
+
+# Logs
+*.log
+logs/
+
+# Tests
+coverage.xml
+.coverage
+htmlcov/
+
+# Large files
+*.zip
+*.tar
+*.gz
+
+# Ignore SQLite database file
+claims.db
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore Streamlit temporary files
+.streamlit/
+
+# Ignore virtual environment if any
+venv/
+.env/
+
+# Ignore logs or temp folders if created
+logs/
+*.log

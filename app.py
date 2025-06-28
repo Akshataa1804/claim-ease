@@ -2,59 +2,55 @@ import ollama
 import json
 import re
 import time
+from datetime import datetime
+from database import log_claim, get_claim_history
 
-def check_red_flags(response_dict):
-    """Detect additional red flags"""
-    flags = []
-    if "Unknown" in response_dict.get("Name", ""):
-        flags.append("Missing claimant name")
-    if not re.match(r"^[A-Z]{2}\d{6,8}$", response_dict.get("Policy Number", "")):
-        flags.append("Suspicious policy number format")
-    if "Unknown" in response_dict.get("Incident Date", ""):
-        flags.append("Missing incident date")
-    return flags
-
-def analyze_claim(user_input):
-    """Process user input with Llama3"""
-    # Load your prompt template
-    with open("prompt_template.txt", "r") as f:
-        prompt = f.read().replace("{user_input}", user_input)
-    
+def analyze_claim(user_input, claim_type="Insurance", model_name="llama3"):
     try:
-        # Record start time for performance monitoring
-        start_time = time.time()
+        # Load prompt template
+        with open("prompt_template.txt", "r") as f:
+            prompt = f.read().replace("{user_input}", user_input)
+            prompt = prompt.replace("{claim_type}", claim_type)
         
         # Send to Ollama
+        start_time = time.time()
         response = ollama.chat(
-            model='llama3',
+            model=model_name,
             messages=[{
                 'role': 'user',
                 'content': prompt
             }],
             options={'temperature': 0.2}
         )
+        processing_time = time.time() - start_time
         
         output = response['message']['content']
-        print(f"Response time: {time.time() - start_time:.2f} seconds")
         
-        # Clean up JSON output (models sometimes add markdown)
-        output = output.replace('```json', '').replace('```', '').strip()
+        # Extract JSON from response
+        try:
+            # Look for JSON code block
+            json_match = re.search(r'```json\n(.*?)\n```', output, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(1)
+                result = json.loads(json_str)
+            else:
+                # Look for plain JSON
+                json_match = re.search(r'\{.*\}', output, re.DOTALL)
+                if json_match:
+                    result = json.loads(json_match.group(0))
+                else:
+                    # Fallback to direct parsing
+                    result = json.loads(output)
+        except json.JSONDecodeError:
+            return {"error": "Failed to parse response", "raw_output": output}
         
-        # Parse to JSON
-        parsed = json.loads(output)
+        # Add metadata
+        result["processing_time"] = f"{processing_time:.2f} seconds"
+        result["model"] = model_name
+        result["claim_type"] = claim_type
+        result["timestamp"] = datetime.now().isoformat()
         
-        # Add additional red flags
-        extra_flags = check_red_flags(parsed)
-        if "Red Flags" in parsed:
-            parsed["Red Flags"] += extra_flags
-        else:
-            parsed["Red Flags"] = extra_flags
+        return result
             
-        return json.dumps(parsed)
-    
     except Exception as e:
-        return json.dumps({
-            "error": str(e),
-            "raw_output": output,
-            "message": "Failed to process claim. Please try again."
-        })
+        return {"error": str(e)}
