@@ -1,87 +1,114 @@
 import sqlite3
 import json
-import os
-
-DB_NAME = "claims.db"
+from datetime import datetime
 
 def init_db():
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect('claims_ai.db')
     c = conn.cursor()
     
-    # Create users table
-    c.execute('''CREATE TABLE IF NOT EXISTS users (
-                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                 username TEXT UNIQUE NOT NULL,
-                 password TEXT NOT NULL,
-                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
-    
-    # Create claims table
+    # Create tables
     c.execute('''CREATE TABLE IF NOT EXISTS claims (
                  id INTEGER PRIMARY KEY AUTOINCREMENT,
-                 user_id INTEGER NOT NULL,
-                 claim_type TEXT NOT NULL,
-                 input_text TEXT NOT NULL,
-                 output_json TEXT NOT NULL,
-                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                 FOREIGN KEY(user_id) REFERENCES users(id))''')
+                 claim_data TEXT NOT NULL,
+                 status TEXT DEFAULT 'new',
+                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+    
+    c.execute('''CREATE TABLE IF NOT EXISTS conversations (
+                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 claim_id INTEGER NOT NULL,
+                 role TEXT NOT NULL,
+                 content TEXT NOT NULL,
+                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                 FOREIGN KEY (claim_id) REFERENCES claims(id))''')
+    
+    c.execute('''CREATE TABLE IF NOT EXISTS documents (
+                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 claim_id INTEGER NOT NULL,
+                 filename TEXT NOT NULL,
+                 doc_type TEXT NOT NULL,
+                 content TEXT,
+                 analysis TEXT,
+                 FOREIGN KEY (claim_id) REFERENCES claims(id))''')
     
     conn.commit()
     conn.close()
 
-def log_claim(user_id, claim_type, input_text, output_json):
-    conn = sqlite3.connect(DB_NAME)
+def save_claim(claim_data):
+    conn = sqlite3.connect('claims_ai.db')
     c = conn.cursor()
-    c.execute('''INSERT INTO claims (user_id, claim_type, input_text, output_json)
-                 VALUES (?, ?, ?, ?)''', 
-              (user_id, claim_type, input_text, json.dumps(output_json)))
+    c.execute("INSERT INTO claims (claim_data) VALUES (?)", 
+              (json.dumps(claim_data),))
+    claim_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    return claim_id
+
+def update_claim_status(claim_id, status):
+    conn = sqlite3.connect('claims_ai.db')
+    c = conn.cursor()
+    c.execute("UPDATE claims SET status = ? WHERE id = ?", (status, claim_id))
     conn.commit()
     conn.close()
 
-def get_claim_history(user_id, limit=10):
-    conn = sqlite3.connect(DB_NAME)
+def save_message(claim_id, role, content):
+    conn = sqlite3.connect('claims_ai.db')
     c = conn.cursor()
-    c.execute('''SELECT id, claim_type, input_text, output_json, created_at 
-                 FROM claims 
-                 WHERE user_id = ? 
-                 ORDER BY created_at DESC 
-                 LIMIT ?''', (user_id, limit))
-    claims = c.fetchall()
+    c.execute("INSERT INTO conversations (claim_id, role, content) VALUES (?, ?, ?)",
+              (claim_id, role, content))
+    conn.commit()
     conn.close()
-    
-    # Parse JSON output
-    result = []
-    for claim in claims:
-        claim_id, claim_type, input_text, output_json, created_at = claim
-        result.append({
+
+def save_document(claim_id, filename, doc_type, content, analysis=None):
+    conn = sqlite3.connect('claims_ai.db')
+    c = conn.cursor()
+    c.execute('''INSERT INTO documents 
+                 (claim_id, filename, doc_type, content, analysis) 
+                 VALUES (?, ?, ?, ?, ?)''',
+              (claim_id, filename, doc_type, content, 
+               json.dumps(analysis) if analysis else None))
+    conn.commit()
+    conn.close()
+
+def get_claim(claim_id):
+    conn = sqlite3.connect('claims_ai.db')
+    c = conn.cursor()
+    c.execute("SELECT claim_data, status, created_at FROM claims WHERE id=?", (claim_id,))
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return {
             "id": claim_id,
-            "claim_type": claim_type,
-            "input_text": input_text[:100] + "..." if len(input_text) > 100 else input_text,
-            "output": json.loads(output_json),
-            "created_at": created_at
-        })
-    return result
+            "data": json.loads(row[0]),
+            "status": row[1],
+            "created_at": row[2]
+        }
+    return None
 
-def add_user(username, password):
-    conn = sqlite3.connect(DB_NAME)
+def get_claim_conversation(claim_id):
+    conn = sqlite3.connect('claims_ai.db')
     c = conn.cursor()
-    try:
-        c.execute('''INSERT INTO users (username, password)
-                     VALUES (?, ?)''', 
-                  (username, password))
-        conn.commit()
-        return c.lastrowid  # Return new user ID
-    except sqlite3.IntegrityError:
-        return None  # Username already exists
-    finally:
-        conn.close()
-
-def get_user(username):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('''SELECT id, password FROM users WHERE username = ?''', (username,))
-    user = c.fetchone()
+    c.execute("SELECT role, content, timestamp FROM conversations WHERE claim_id=? ORDER BY timestamp", (claim_id,))
+    rows = c.fetchall()
     conn.close()
-    return user
+    return [{"role": row[0], "content": row[1], "timestamp": row[2]} for row in rows]
 
-# Initialize database on import
-init_db()
+def get_claim_documents(claim_id):
+    conn = sqlite3.connect('claims_ai.db')
+    c = conn.cursor()
+    c.execute("SELECT id, filename, doc_type, analysis FROM documents WHERE claim_id=?", (claim_id,))
+    rows = c.fetchall()
+    conn.close()
+    return [{
+        "id": row[0],
+        "filename": row[1],
+        "type": row[2],
+        "analysis": json.loads(row[3]) if row[3] else None
+    } for row in rows]
+
+def list_claims(limit=10):
+    conn = sqlite3.connect('claims_ai.db')
+    c = conn.cursor()
+    c.execute("SELECT id, status, created_at FROM claims ORDER BY created_at DESC LIMIT ?", (limit,))
+    claims = [{"id": row[0], "status": row[1], "created_at": row[2]} for row in c.fetchall()]
+    conn.close()
+    return claims
